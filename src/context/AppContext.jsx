@@ -1,93 +1,179 @@
-import React, { createContext, useContext, useEffect, useState } from 'react';
+import { createContext, useContext, useState, useEffect } from 'react';
 import { initialAssets, initialIssues } from '../data/assets';
-import toast from 'react-hot-toast'; // Ye add karo
 
 const AppContext = createContext();
 
-export function AppProvider({ children }) {
-
-  const [assets, setAssets] = useState(() => {
-    const stored = localStorage.getItem('maintainiq_assets');
-    return stored? JSON.parse(stored) : initialAssets;
-  });
-
-  // Fix 1: issue -> issues
-  const [issues, setIssues] = useState(() => {
-    const stored = localStorage.getItem('maintainiq_issues');
-    return stored? JSON.parse(stored) : initialIssues;
-  });
-
+export const AppProvider = ({ children }) => {
   const [user, setUser] = useState(null);
+  const [assets, setAssets] = useState(initialAssets);
+  const [issues, setIssues] = useState(initialIssues);
 
+  // Load from localStorage on mount
   useEffect(() => {
-    localStorage.setItem('maintainiq_assets', JSON.stringify(assets));
-  }, [assets]);
+    const savedUser = localStorage.getItem('maintainiq_user');
+    const savedIssues = localStorage.getItem('maintainiq_issues');
+    const savedAssets = localStorage.getItem('maintainiq_assets');
 
+    if (savedUser) setUser(JSON.parse(savedUser));
+    if (savedIssues) setIssues(JSON.parse(savedIssues));
+    if (savedAssets) setAssets(JSON.parse(savedAssets));
+  }, []);
+
+  // Save user to localStorage
+  useEffect(() => {
+    if (user) {
+      localStorage.setItem('maintainiq_user', JSON.stringify(user));
+    } else {
+      localStorage.removeItem('maintainiq_user');
+    }
+  }, [user]);
+
+  // Save issues to localStorage
   useEffect(() => {
     localStorage.setItem('maintainiq_issues', JSON.stringify(issues));
   }, [issues]);
 
-  const addIssue = (newIssue) => {
-    // Fix 2: issues.length + 1 taake duplicate na ho
-    const nextNumber = issues.length + 1;
-    const issueNumber = `ISS-2026-${String(nextNumber).padStart(3, '0')}`;
+  // Save assets to localStorage
+  useEffect(() => {
+    localStorage.setItem('maintainiq_assets', JSON.stringify(assets));
+  }, [assets]);
 
-    const issue = {
-     ...newIssue,
-      id: `ISS-${Date.now()}`,
-      issueNumber,
-      status: 'Reported',
-      reportedAt: new Date().toISOString(),
-    };
-
-    setIssues([issue,...issues]);
-
-    // Asset ka status update karo
-    setAssets(assets.map(a =>
-      a.id === newIssue.assetId? {...a, status: 'Issue Reported' } : a
-    ));
-
-    toast.success('Issue reported successfully!');
-    return issue;
-  };
-
+  // Update issue status with history tracking
   const updateIssueStatus = (issueId, newStatus, note = '') => {
-    setIssues(issues.map(iss => {
-      if (iss.id === issueId) {
-        const updated = {...iss, status: newStatus };
-        if (note) updated.maintenanceNote = note;
-        if (newStatus === 'Resolved') updated.resolvedAt = new Date().toISOString();
-        return updated;
-      }
-      return iss;
-    }));
-
-    // Agar resolve ho gaya to asset wapas Operational
-    if (newStatus === 'Resolved') {
-      const issue = issues.find(i => i.id === issueId);
-      setAssets(assets.map(a =>
-        a.id === issue.assetId? {...a, status: 'Operational' } : a
-      ));
-    }
-
-    toast.success(`Status updated to ${newStatus}`);
+    setIssues(prev => prev.map(issue =>
+      issue.id === issueId
+     ? {
+          ...issue,
+            status: newStatus,
+            resolvedAt: newStatus === 'Resolved'? new Date().toISOString() : issue.resolvedAt,
+            closedAt: newStatus === 'Closed'? new Date().toISOString() : issue.closedAt,
+            history: [
+            ...(issue.history || []),
+              {
+                timestamp: new Date().toISOString(),
+                action: `Status changed to ${newStatus}`,
+                performedBy: user?.name || 'System',
+                note: note || undefined
+              }
+            ]
+          }
+        : issue
+    ));
   };
 
+  // Assign issue to technician
+  const assignIssue = (issueId, technicianName) => {
+    setIssues(prev => prev.map(issue =>
+      issue.id === issueId
+     ? {
+          ...issue,
+            assignedTo: technicianName,
+            status: 'Assigned',
+            assignedAt: new Date().toISOString(),
+            history: [
+            ...(issue.history || []),
+              {
+                timestamp: new Date().toISOString(),
+                action: `Assigned to ${technicianName}`,
+                performedBy: user?.name || 'Admin'
+              }
+            ]
+          }
+        : issue
+    ));
+  };
+
+  // Add new issue - Public QR report
+  const addIssue = (newIssue) => {
+    const issueWithHistory = {
+    ...newIssue,
+      id: newIssue.id || `ISS-${Date.now()}`,
+      issueNumber: newIssue.issueNumber || `MI-${Date.now()}`,
+      reportedAt: newIssue.reportedAt || new Date().toISOString(),
+      status: newIssue.status || 'Reported',
+      priority: newIssue.priority || 'Medium',
+      assignedTo: newIssue.assignedTo || null,
+      history: newIssue.history || [
+        {
+          timestamp: new Date().toISOString(),
+          action: 'Issue reported via QR scan',
+          performedBy: 'Anonymous User'
+        }
+      ]
+    };
+    setIssues(prev => [issueWithHistory,...prev]);
+  };
+
+  // Add new asset
+  const addAsset = (assetData) => {
+    const newAsset = {
+    ...assetData,
+      id: assetData.id || `AST-${Date.now()}`,
+      assetCode: assetData.assetCode || `AC-${Date.now().toString().slice(-6)}`,
+      status: assetData.status || 'Operational',
+      installDate: assetData.installDate || new Date().toISOString(),
+      lastInspection: assetData.lastInspection || null,
+      history: assetData.history || [
+        {
+          timestamp: new Date().toISOString(),
+          action: 'Asset registered',
+          performedBy: user?.name || 'Admin'
+        }
+      ]
+    };
+    setAssets(prev => [...prev, newAsset]);
+  };
+
+  // Update asset status
+  const updateAssetStatus = (assetId, newStatus) => {
+    setAssets(prev => prev.map(asset =>
+      asset.id === assetId
+     ? {
+          ...asset,
+            status: newStatus,
+            lastInspection: new Date().toISOString(),
+            history: [
+            ...(asset.history || []),
+              {
+                timestamp: new Date().toISOString(),
+                action: `Status updated to ${newStatus}`,
+                performedBy: user?.name || 'System'
+              }
+            ]
+          }
+        : asset
+    ));
+  };
+
+  // Reset demo data
   const resetDemoData = () => {
-    setAssets(initialAssets);
     setIssues(initialIssues);
-    toast.success('Demo data reset!');
+    setAssets(initialAssets);
+    localStorage.removeItem('maintainiq_issues');
+    localStorage.removeItem('maintainiq_assets');
   };
 
   return (
     <AppContext.Provider value={{
-      assets, issues, user, setUser,
-      addIssue, updateIssueStatus, resetDemoData,
-      setIssues, setAssets
+      user,
+      setUser,
+      assets,
+      issues,
+      updateIssueStatus,
+      assignIssue,
+      addAsset,
+      updateAssetStatus,
+      resetDemoData
     }}>
       {children}
     </AppContext.Provider>
   );
 };
 
-export const useApp = () => useContext(AppContext);
+export const useApp = () => {
+  const context = useContext(AppContext);
+  if (!context) {
+    throw new Error('useApp must be used within AppProvider');
+  }
+  return context;
+};

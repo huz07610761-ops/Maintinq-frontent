@@ -20,13 +20,16 @@ import {
   CheckCircle,
   Clock,
   Wrench,
-  TrendingUp
+  TrendingUp,
+  UserPlus,
+  Calendar
 } from 'lucide-react';
 import toast from 'react-hot-toast';
 
 const Dashboard = () => {
   const navigate = useNavigate();
-  const { user, issues, assets, updateIssueStatus, setUser, resetDemoData } = useApp();
+  const { user, issues, assets, updateIssueStatus, assignIssue, setUser, resetDemoData, addAsset } = useApp();
+
   const [activeTab, setActiveTab] = useState('dashboard');
   const [sidebarOpen, setSidebarOpen] = useState(true);
   const [statusFilter, setStatusFilter] = useState('all');
@@ -34,6 +37,7 @@ const Dashboard = () => {
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedIssue, setSelectedIssue] = useState(null);
   const [selectedAsset, setSelectedAsset] = useState(null);
+  const [showCreateAsset, setShowCreateAsset] = useState(false);
 
   useEffect(() => {
     if (!user) {
@@ -43,7 +47,7 @@ const Dashboard = () => {
 
   if (!user) return null;
 
-  // Filter issues based on role
+  // Filter issues
   const filteredIssues = issues.filter(issue => {
     if (user.role === 'technician' && issue.assignedTo!== user.name) return false;
     if (statusFilter!== 'all' && issue.status!== statusFilter) return false;
@@ -68,6 +72,7 @@ const Dashboard = () => {
   const getStatusBadge = (status) => {
     const styles = {
       'Operational': 'bg-green-100 text-green-800 border-green-200',
+      'Under Maintenance': 'bg-orange-100 text-orange-800 border-orange-200',
       'Reported': 'bg-yellow-100 text-yellow-800 border-yellow-200',
       'Assigned': 'bg-blue-100 text-blue-800 border-blue-200',
       'Inspection Started': 'bg-purple-100 text-purple-800 border-purple-200',
@@ -102,6 +107,8 @@ const Dashboard = () => {
     { id: 'issues', label: 'My Tasks', icon: Wrench },
   ];
 
+  const technicians = ['Ali Khan', 'Sara Ahmed', 'John Doe'];
+
   return (
     <div className="min-h-screen bg-slate-50 flex">
       {/* Sidebar */}
@@ -118,7 +125,7 @@ const Dashboard = () => {
           )}
           <button
             onClick={() => setSidebarOpen(!sidebarOpen)}
-            className="p-2 hover:bg-slate-800 rounded-lg"
+            className="p-2 hover:bg-slate-800 rounded-lg transition-colors"
           >
             {sidebarOpen? <X size={20} /> : <Menu size={20} />}
           </button>
@@ -132,7 +139,7 @@ const Dashboard = () => {
               onClick={() => setActiveTab(item.id)}
               className={`w-full flex items-center gap-3 px-4 py-3 rounded-lg transition-colors ${
                 activeTab === item.id
-                 ? 'bg-blue-600 text-white'
+                ? 'bg-blue-600 text-white'
                   : 'text-slate-300 hover:bg-slate-800'
               }`}
             >
@@ -158,7 +165,7 @@ const Dashboard = () => {
           {sidebarOpen && (
             <button
               onClick={() => { setUser(null); navigate('/'); }}
-              className="w-full mt-3 flex items-center gap-2 px-4 py-2 text-slate-300 hover:bg-slate-800 rounded-lg text-sm"
+              className="w-full mt-3 flex items-center gap-2 px-4 py-2 text-slate-300 hover:bg-slate-800 rounded-lg text-sm transition-colors"
             >
               <LogOut size={16} />
               Logout
@@ -211,8 +218,14 @@ const Dashboard = () => {
 
               {/* Recent Issues */}
               <div className="bg-white rounded-xl border border-slate-200">
-                <div className="p-6 border-b border-slate-200">
+                <div className="p-6 border-b border-slate-200 flex justify-between items-center">
                   <h2 className="text-lg font-semibold text-slate-900">Recent Issues</h2>
+                  <button
+                    onClick={() => setActiveTab('issues')}
+                    className="text-sm text-blue-600 hover:text-blue-700 font-medium"
+                  >
+                    View All →
+                  </button>
                 </div>
                 <div className="overflow-x-auto">
                   <table className="w-full">
@@ -227,7 +240,7 @@ const Dashboard = () => {
                     </thead>
                     <tbody className="divide-y divide-slate-200">
                       {issues.slice(0, 5).map(issue => (
-                        <tr key={issue.id} className="hover:bg-slate-50">
+                        <tr key={issue.id} className="hover:bg-slate-50 transition-colors">
                           <td className="p-4 font-mono text-sm">{issue.issueNumber}</td>
                           <td className="p-4 text-sm">{getAssetName(issue.assetId)}</td>
                           <td className="p-4">
@@ -258,7 +271,10 @@ const Dashboard = () => {
                   <h2 className="text-lg font-semibold text-slate-900">Asset Management</h2>
                   <p className="text-sm text-slate-500">Manage all registered assets</p>
                 </div>
-                <button className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700">
+                <button
+                  onClick={() => setShowCreateAsset(true)}
+                  className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+                >
                   <Plus size={18} />
                   Add Asset
                 </button>
@@ -279,7 +295,7 @@ const Dashboard = () => {
                     </thead>
                     <tbody className="divide-y divide-slate-200">
                       {assets.map(asset => (
-                        <tr key={asset.id} className="hover:bg-slate-50">
+                        <tr key={asset.id} className="hover:bg-slate-50 transition-colors">
                           <td className="p-4 font-mono text-sm">{asset.assetCode}</td>
                           <td className="p-4 text-sm font-medium">{asset.name}</td>
                           <td className="p-4 text-sm text-slate-600">{asset.category}</td>
@@ -291,11 +307,19 @@ const Dashboard = () => {
                           </td>
                           <td className="p-4">
                             <div className="flex gap-2">
-                              <button className="p-2 hover:bg-slate-100 rounded-lg" title="View QR">
+                              <button
+                                onClick={() => toast.success(`QR: ${window.location.origin}/asset/${asset.id}`)}
+                                className="p-2 hover:bg-slate-100 rounded-lg transition-colors"
+                                title="View QR"
+                              >
                                 <QrCode size={16} />
                               </button>
-                              <button className="p-2 hover:bg-slate-100 rounded-lg" title="Edit">
-                                <Edit size={16} />
+                              <button
+                                onClick={() => setSelectedAsset(asset)}
+                                className="p-2 hover:bg-slate-100 rounded-lg transition-colors"
+                                title="View Details"
+                              >
+                                <Eye size={16} />
                               </button>
                             </div>
                           </td>
@@ -320,8 +344,11 @@ const Dashboard = () => {
                 </div>
                 {user.role === 'admin' && (
                   <button
-                    onClick={resetDemoData}
-                    className="px-4 py-2 text-sm border border-slate-300 rounded-lg hover:bg-slate-50"
+                    onClick={() => {
+                      resetDemoData();
+                      toast.success('Demo data reset');
+                    }}
+                    className="px-4 py-2 text-sm border border-slate-300 rounded-lg hover:bg-slate-50 transition-colors"
                   >
                     Reset Demo Data
                   </button>
@@ -331,7 +358,7 @@ const Dashboard = () => {
               {/* Filters */}
               <div className="bg-white rounded-xl border border-slate-200 p-4">
                 <div className="flex gap-3 flex-wrap">
-                  <div className="flex-1 min-w-[250px] relative">
+                  <div className="flex-1 min-w- relative">
                     <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={18} />
                     <input
                       type="text"
@@ -384,7 +411,7 @@ const Dashboard = () => {
                     </thead>
                     <tbody className="divide-y divide-slate-200">
                       {filteredIssues.map(issue => (
-                        <tr key={issue.id} className="hover:bg-slate-50">
+                        <tr key={issue.id} className="hover:bg-slate-50 transition-colors">
                           <td className="p-4 font-mono text-sm">{issue.issueNumber}</td>
                           <td className="p-4 text-sm">{getAssetName(issue.assetId)}</td>
                           <td className="p-4 text-sm max-w-xs truncate">{issue.title}</td>
@@ -400,12 +427,14 @@ const Dashboard = () => {
                           </td>
                           <td className="p-4 text-sm text-slate-700">{issue.assignedTo || '-'}</td>
                           <td className="p-4">
-                            <button
-                              onClick={() => setSelectedIssue(issue)}
-                              className="px-3 py-1.5 text-sm border border-slate-300 rounded-lg hover:bg-slate-50"
-                            >
-                              Update
-                            </button>
+                            {(user.role === 'admin' || issue.assignedTo === user.name) && (
+                              <button
+                                onClick={() => setSelectedIssue(issue)}
+                                className="px-3 py-1.5 text-sm border border-slate-300 rounded-lg hover:bg-slate-50 transition-colors font-medium"
+                              >
+                                {issue.assignedTo? 'Update' : 'Assign'}
+                              </button>
+                            )}
                           </td>
                         </tr>
                       ))}
@@ -420,15 +449,88 @@ const Dashboard = () => {
           {activeTab === 'technicians' && user.role === 'admin' && (
             <div className="bg-white rounded-xl border border-slate-200 p-6">
               <h2 className="text-lg font-semibold text-slate-900 mb-4">Technician Management</h2>
-              <p className="text-slate-500">Coming soon - Manage technicians and view performance metrics</p>
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                {technicians.map(tech => {
+                  const techIssues = issues.filter(i => i.assignedTo === tech);
+                  const openCount = techIssues.filter(i =>!['Resolved', 'Closed'].includes(i.status)).length;
+                  return (
+                    <div key={tech} className="border border-slate-200 rounded-lg p-4">
+                      <div className="flex items-center gap-3 mb-3">
+                        <div className="w-12 h-12 bg-blue-100 rounded-full flex items-center justify-center">
+                          <Users className="text-blue-600" size={24} />
+                        </div>
+                        </div>
+                        <div>
+                          <p className="font-semibold text-slate-900">{tech}</p>
+                          <p className="text-xs text-slate-500">Technician</p>
+                        </div>
+                      <div className="space-y-2 text-sm">
+                        <div className="flex justify-between">
+                          <span className="text-slate-600">Total Tasks:</span>
+                          <span className="font-medium">{techIssues.length}</span>
+                        </div>
+                        <div className="flex justify-between">
+                          <span className="text-slate-600">Open Tasks:</span>
+                          <span className="font-medium text-orange-600">{openCount}</span>
+                        </div>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
             </div>
           )}
 
           {/* Analytics Tab */}
           {activeTab === 'analytics' && user.role === 'admin' && (
-            <div className="bg-white rounded-xl border border-slate-200 p-6">
-              <h2 className="text-lg font-semibold text-slate-900 mb-4">Analytics & Reports</h2>
-              <p className="text-slate-500">Coming soon - Charts and MTTR analytics</p>
+            <div className="space-y-6">
+              <div className="bg-white rounded-xl border border-slate-200 p-6">
+                <h2 className="text-lg font-semibold text-slate-900 mb-4">Analytics & Reports</h2>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                  <div>
+                    <h3 className="text-sm font-medium text-slate-700 mb-3">Issues by Status</h3>
+                    <div className="space-y-2">
+                      {['Reported', 'Assigned', 'In Progress', 'Resolved'].map(status => {
+                        const count = issues.filter(i => i.status.includes(status.split(' ')[0])).length;
+                        const percentage = issues.length? (count / issues.length * 100).toFixed(0) : 0;
+                        return (
+                          <div key={status} className="flex items-center gap-3">
+                            <span className="text-sm text-slate-600 w-32">{status}</span>
+                            <div className="flex-1 bg-slate-100 rounded-full h-2">
+                              <div
+                                className="bg-blue-600 h-2 rounded-full"
+                                style={{ width: `${percentage}%` }}
+                              />
+                            </div>
+                            <span className="text-sm font-medium text-slate-900 w-12 text-right">{count}</span>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </div>
+                  <div>
+                    <h3 className="text-sm font-medium text-slate-700 mb-3">Issues by Priority</h3>
+                    <div className="space-y-2">
+                      {['Critical', 'High', 'Medium', 'Low'].map(priority => {
+                        const count = issues.filter(i => i.priority === priority).length;
+                        const percentage = issues.length? (count / issues.length * 100).toFixed(0) : 0;
+                        return (
+                          <div key={priority} className="flex items-center gap-3">
+                            <span className="text-sm text-slate-600 w-32">{priority}</span>
+                            <div className="flex-1 bg-slate-100 rounded-full h-2">
+                              <div
+                                className="bg-orange-600 h-2 rounded-full"
+                                style={{ width: `${percentage}%` }}
+                              />
+                            </div>
+                            <span className="text-sm font-medium text-slate-900 w-12 text-right">{count}</span>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </div>
+                </div>
+              </div>
             </div>
           )}
         </div>
@@ -436,46 +538,211 @@ const Dashboard = () => {
 
       {/* Update Issue Modal */}
       {selectedIssue && (
-        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 p-4" onClick={() => setSelectedIssue(null)}>
-          <div className="bg-white rounded-xl shadow-2xl max-w-md w-full p-6" onClick={(e) => e.stopPropagation()}>
-            <div className="flex justify-between items-start mb-4">
-              <div>
-                <h3 className="text-lg font-semibold text-slate-900">Update Issue</h3>
-                <p className="text-sm text-slate-500 mt-1">{selectedIssue.issueNumber}</p>
-              </div>
-              <button onClick={() => setSelectedIssue(null)} className="text-slate-400 hover:text-slate-600">
-                <X size={20} />
-              </button>
-            </div>
-            <div className="space-y-4">
-              <div>
-                <label className="text-sm font-medium text-slate-700 block mb-2">Status</label>
-                <select
-                  defaultValue={selectedIssue.status}
-                  onChange={(e) => updateIssueStatus(selectedIssue.id, e.target.value)}
-                  className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none"
-                >
-                  <option value="Reported">Reported</option>
-                  <option value="Assigned">Assigned</option>
-                  <option value="Inspection Started">Inspection Started</option>
-                  <option value="Maintenance In Progress">In Progress</option>
-                  <option value="Waiting for Parts">Waiting for Parts</option>
-                  <option value="Resolved">Resolved</option>
-                  <option value="Closed">Closed</option>
-                </select>
-              </div>
-              <button
-                onClick={() => setSelectedIssue(null)}
-                className="w-full px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
-              >
-                Close
-              </button>
-            </div>
-          </div>
-        </div>
+        <UpdateIssueModal
+          issue={selectedIssue}
+          user={user}
+          onClose={() => setSelectedIssue(null)}
+          technicians={technicians}
+        />
+      )}
+
+      {/* Create Asset Modal */}
+      {showCreateAsset && (
+        <CreateAssetModal
+          onClose={() => setShowCreateAsset(false)}
+          onCreate={(assetData) => {
+            addAsset(assetData);
+            setShowCreateAsset(false);
+            toast.success('Asset created successfully');
+          }}
+        />
       )}
     </div>
   );
 };
+
+// Update Issue Modal Component
+const UpdateIssueModal = ({ issue, user, onClose, technicians }) => {
+  const { updateIssueStatus, assignIssue } = useApp();
+  const [newStatus, setNewStatus] = useState(issue.status);
+  const [note, setNote] = useState('');
+  const [assignTo, setAssignTo] = useState(issue.assignedTo || '');
+
+  const handleUpdate = () => {
+    updateIssueStatus(issue.id, newStatus, note);
+
+    if (user.role === 'admin' && assignTo && assignTo!== issue.assignedTo) {
+      assignIssue(issue.id, assignTo);
+      toast.success(`Assigned to ${assignTo}`);
+    }
+
+    toast.success('Issue updated');
+    onClose();
+  };
+
+  return (
+    <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 p-4" onClick={onClose}>
+      <div className="bg-white rounded-xl shadow-2xl max-w-md w-full p-6" onClick={(e) => e.stopPropagation()}>
+        <div className="flex justify-between items-start mb-4">
+          <div>
+            <h3 className="text-lg font-semibold text-slate-900">Update Issue</h3>
+            <p className="text-sm text-slate-500 mt-1">{issue.issueNumber}</p>
+          </div>
+          <button onClick={onClose} className="text-slate-400 hover:text-slate-600">
+            <X size={20} />
+          </button>
+        </div>
+        <div className="space-y-4">
+          {user.role === 'admin' && (
+            <div>
+              <label className="text-sm font-medium text-slate-700 block mb-2">
+                Assign To Technician
+              </label>
+              <select
+                value={assignTo}
+                onChange={(e) => setAssignTo(e.target.value)}
+                className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none"
+              >
+                <option value="">Unassigned</option>
+                {technicians.map(tech => (
+                  <option key={tech} value={tech}>{tech}</option>
+                ))}
+              </select>
+            </div>
+          )}
+
+          <div>
+            <label className="text-sm font-medium text-slate-700 block mb-2">Status</label>
+            <select
+              value={newStatus}
+              onChange={(e) => setNewStatus(e.target.value)}
+              className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none"
+            >
+              <option value="Reported">Reported</option>
+              <option value="Assigned">Assigned</option>
+              <option value="Inspection Started">Inspection Started</option>
+              <option value="Maintenance In Progress">In Progress</option>
+              <option value="Waiting for Parts">Waiting for Parts</option>
+              <option value="Resolved">Resolved</option>
+              <option value="Closed">Closed</option>
+            </select>
+          </div>
+
+          <div>
+            <label className="text-sm font-medium text-slate-700 block mb-2">
+              Maintenance Note
+            </label>
+            <textarea
+              className="w-full border border-slate-300 rounded-lg p-3 h-24 focus:ring-2 focus:ring-blue-500 outline-none resize-none"
+              placeholder="Add inspection findings, work done, parts used..."
+              value={note}
+              onChange={(e) => setNote(e.target.value)}
+            />
+          </div>
+
+          <button
+            onClick={handleUpdate}
+            className="w-full px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors font-medium"
+          >
+            Save Changes
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+};
+
+// Create Asset Modal Component
+const CreateAssetModal = ({ onClose, onCreate }) => {
+  const [formData, setFormData] = useState({
+    name: '',
+    category: '',
+    location: '',
+    serialNumber: '',
+  });
+
+  const handleSubmit = (e) => {
+    e.preventDefault();
+    const newAsset = {
+      id: `AST-${Date.now()}`,
+      assetCode: `AC-${Date.now().toString().slice(-6)}`,
+     ...formData,
+      status: 'Operational',
+      installDate: new Date().toISOString(),
+      lastInspection: null,
+      history: []
+    };
+    onCreate(newAsset);
+  };
+
+  return (
+    <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 p-4" onClick={onClose}>
+      <div className="bg-white rounded-xl shadow-2xl max-w-md w-full p-6" onClick={(e) => e.stopPropagation()}>
+        <div className="flex justify-between items-start mb-4">
+          <h3 className="text-lg font-semibold text-slate-900">Create New Asset</h3>
+          <button onClick={onClose} className="text-slate-400 hover:text-slate-600">
+            <X size={20} />
+          </button>
+        </div>
+        <form onSubmit={handleSubmit} className="space-y-4">
+          <div>
+            <label className="text-sm font-medium text-slate-700 block mb-2">Asset Name</label>
+            <input
+              type="text"
+              required
+              value={formData.name}
+              onChange={(e) => setFormData({...formData, name: e.target.value})}
+              className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none"
+              placeholder="e.g., Conference Room AC"
+            />
+          </div>
+          <div>
+            <label className="text-sm font-medium text-slate-700 block mb-2">Category</label>
+            <select
+              required
+              value={formData.category}
+              onChange={(e) => setFormData({...formData, category: e.target.value})}
+              className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none"
+            >
+              <option value="">Select Category</option>
+              <option value="HVAC">HVAC</option>
+              <option value="Electrical">Electrical</option>
+              <option value="Plumbing">Plumbing</option>
+              <option value="IT Equipment">IT Equipment</option>
+            </select>
+          </div>
+          <div>
+            <label className="text-sm font-medium text-slate-700 block mb-2">Location</label>
+            <input
+              type="text"
+              required
+              value={formData.location}
+              onChange={(e) => setFormData({...formData, location: e.target.value})}
+              className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none"
+              placeholder="e.g., 2nd Floor, Block A"
+            />
+          </div>
+          <div>
+            <label className="text-sm font-medium text-slate-700 block mb-2">Serial Number</label>
+            <input
+              type="text"
+              value={formData.serialNumber}
+              onChange={(e) => setFormData({...formData, serialNumber: e.target.value})}
+              className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none"
+              placeholder="e.g., SN-12345"
+            />
+          </div>
+          <button
+            type="submit"
+            className="w-full px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors font-medium"
+          >
+            Create Asset
+          </button>
+        </form>
+      </div>
+    </div>
+  );
+};
+
 
 export default Dashboard;
