@@ -28,7 +28,7 @@ import toast from 'react-hot-toast';
 
 const Dashboard = () => {
   const navigate = useNavigate();
-  const { user, issues, assets, updateIssueStatus, assignIssue, setUser, resetDemoData, addAsset } = useApp();
+  const { user, issues,logout,   assets, updateIssueStatus, assignIssue, setUser, resetDemoData, addAsset } = useApp();
 
   const [activeTab, setActiveTab] = useState('dashboard');
   const [sidebarOpen, setSidebarOpen] = useState(true);
@@ -164,7 +164,11 @@ const Dashboard = () => {
           </div>
           {sidebarOpen && (
             <button
-              onClick={() => { setUser(null); navigate('/'); }}
+              onClick={() => { 
+                logout()
+                setUser(null);
+                 navigate('/'); 
+                }}
               className="w-full mt-3 flex items-center gap-2 px-4 py-2 text-slate-300 hover:bg-slate-800 rounded-lg text-sm transition-colors"
             >
               <LogOut size={16} />

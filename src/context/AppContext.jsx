@@ -1,5 +1,7 @@
 import { createContext, useContext, useState, useEffect } from 'react';
 import { initialAssets, initialIssues } from '../data/assets';
+import { mockUsers } from '../data/users';
+import toast from 'react-hot-toast';
 
 const AppContext = createContext();
 
@@ -7,6 +9,7 @@ export const AppProvider = ({ children }) => {
   const [user, setUser] = useState(null);
   const [assets, setAssets] = useState(initialAssets);
   const [issues, setIssues] = useState(initialIssues);
+  const [users] = useState(mockUsers);
 
   // Load from localStorage on mount
   useEffect(() => {
@@ -37,6 +40,32 @@ export const AppProvider = ({ children }) => {
   useEffect(() => {
     localStorage.setItem('maintainiq_assets', JSON.stringify(assets));
   }, [assets]);
+
+   const login = (email, password) => {
+    const foundUser = users.find(
+      u => u.email.toLowerCase() === email.toLowerCase() && u.password === password
+    );
+
+    if (foundUser) {
+      // Password remove karke user set karo - security
+      const { password: _,...userWithoutPassword } = foundUser;
+      setUser(userWithoutPassword);
+      toast.success(`Welcome back, ${foundUser.name}!`);
+      return { success: true, user: userWithoutPassword };
+    } else {
+      toast.error('Invalid email or password');
+      return { success: false, error: 'Invalid credentials' };
+    }
+  };
+
+   const logout = () => {
+    setUser(null);
+    toast.success('Logged out successfully');
+  };
+
+
+
+
 
   // Update issue status with history tracking
   const updateIssueStatus = (issueId, newStatus, note = '') => {
@@ -159,6 +188,8 @@ export const AppProvider = ({ children }) => {
       setUser,
       assets,
       issues,
+      login,
+      logout,
       updateIssueStatus,
       assignIssue,
       addAsset,
