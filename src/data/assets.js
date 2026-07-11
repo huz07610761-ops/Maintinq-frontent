@@ -83,7 +83,7 @@ export const initialIssues = [
     status: "Assigned", // Reported | Assigned | Inspection Started | Maintenance In Progress | Waiting for Parts | Resolved | Closed
     reportedBy: "Student - Anonymous",
     reportedAt: "2026-07-10T09:30:00",
-    assignedTo: "Sara Ahmed",
+    assignedTo: "Ali Khan",
     aiSuggested: true,
     possibleCauses: ["Loose HDMI cable", "Faulty bulb", "Overheating"],
     initialChecks: ["Check HDMI connection", "Restart projector", "Check ventilation"],
