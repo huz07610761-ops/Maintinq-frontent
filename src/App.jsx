@@ -3,8 +3,10 @@ import reactLogo from './assets/react.svg'
 import viteLogo from './assets/vite.svg'
 import heroImg from './assets/hero.png'
 import { AppProvider } from './context/AppContext'
-import { BrowserRouter, Routes } from 'react-router-dom'
+import { BrowserRouter, Route, Routes } from 'react-router-dom'
 import { Toaster } from 'react-hot-toast'
+import Login from './pages/Login'
+import AssetPublicPage from './pages/public/AssetPublicPage'
 
 function App() {
   const [count, setCount] = useState(0)
@@ -14,7 +16,8 @@ function App() {
       <BrowserRouter>
         <Toaster position='top-right'/>
         <Routes>
-          <Route path="/" element={} />
+          <Route path="/" element={<Login/>} />
+          <Route path="/asset/:id" element={<AssetPublicPage/>} />
         </Routes>
       </BrowserRouter>
     </AppProvider>
