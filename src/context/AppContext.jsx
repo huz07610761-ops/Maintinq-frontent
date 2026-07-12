@@ -113,25 +113,25 @@ export const AppProvider = ({ children }) => {
   };
 
   // Add new issue - Public QR report
-  const addIssue = (newIssue) => {
-    const issueWithHistory = {
-    ...newIssue,
-      id: newIssue.id || `ISS-${Date.now()}`,
-      issueNumber: newIssue.issueNumber || `MI-${Date.now()}`,
-      reportedAt: newIssue.reportedAt || new Date().toISOString(),
-      status: newIssue.status || 'Reported',
-      priority: newIssue.priority || 'Medium',
-      assignedTo: newIssue.assignedTo || null,
-      history: newIssue.history || [
-        {
-          timestamp: new Date().toISOString(),
-          action: 'Issue reported via QR scan',
-          performedBy: 'Anonymous User'
-        }
-      ]
-    };
-    setIssues(prev => [issueWithHistory,...prev]);
+ const addIssue = (newIssue) => {
+  const issueWithHistory = {
+ ...newIssue,
+    id: newIssue.id || `ISS-${Date.now()}`,
+    issueNumber: newIssue.issueNumber || `MI-${Date.now()}`,
+    reportedAt: newIssue.reportedAt || new Date().toISOString(),
+    status: newIssue.status || 'Reported',
+    priority: newIssue.priority || 'Medium',
+    assignedTo: newIssue.assignedTo || null,
+    history: newIssue.history || [
+      {
+        timestamp: new Date().toISOString(),
+        action: 'Issue reported',
+        performedBy: 'System'
+      }
+    ]
   };
+  setIssues(prev => [issueWithHistory,...prev]);
+};
 
   // Add new asset
   const addAsset = (assetData) => {
@@ -192,6 +192,7 @@ export const AppProvider = ({ children }) => {
       logout,
       updateIssueStatus,
       assignIssue,
+      addIssue,
       addAsset,
       updateAssetStatus,
       resetDemoData
